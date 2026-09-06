@@ -1,0 +1,41 @@
+name: Weekly Video Cleanup
+
+on:
+  schedule:
+    - cron: '0 0 * * 0' # Runs every Sunday at midnight (UTC)
+  workflow_dispatch: # Allows you to run this manually from the Actions tab
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Needed to push changes
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Delete old videos
+        run: |
+          # Find and delete all .mp4 files that are older than 7 days
+          find . -name '*.mp4' -type f -mtime +7 -exec rm -f {} +
+          
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          
+      - name: Reset Git History (Clean up size)
+        run: |
+          # Create an orphan branch to wipe all past commit history
+          git checkout --orphan temp_branch
+          git add -A
+          git commit -m "chore: automated cleanup of old videos and history"
+          
+          # Replace main branch with the fresh orphan branch
+          git branch -D main
+          git branch -m main
+          
+          # Force push to GitHub to apply the size reduction
+          git push -f origin main
